@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoreBrief</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header header">
+    <div class="navbar-wrap container">
+      <div class="navbar-top">
+        <a href="#" class="logo">CoreBrief</a>
+        <form class="search-form search" id="searchForm">
+          <input type="text" id="searchInput" placeholder="Search news">
+          <button type="submit">Search</button>
+        </form>
+      </div>
+
+      <nav class="category-nav categories" id="categoryNav">
+        <button class="category-btn active" data-category="general">Home</button>
+        <button class="category-btn" data-category="business">Business</button>
+        <button class="category-btn" data-category="technology">Technology</button>
+        <button class="category-btn" data-category="sports">Sports</button>
+        <button class="category-btn" data-category="health">Health</button>
+        <button class="category-btn" data-category="entertainment">Entertainment</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell container">
+    <section class="hero-section hero" id="heroSection">
+      <p class="section-tag">Top Story</p>
+      <h1 id="heroTitle">Loading latest headlines...</h1>
+      <p id="heroDescription">Please wait while CoreBrief loads the top story.</p>
+      <a href="#" class="hero-button" id="heroButton" target="_blank" rel="noopener noreferrer">Read More</a>
+    </section>
+
+    <section class="status-section status">
+      <p id="statusMessage" class="status-message">Loading...</p>
+    </section>
+
+    <section class="trending-section trending">
+      <h2>Trending News</h2>
+      <div class="trending-grid" id="trendingNews"></div>
+    </section>
+
+    <section class="main-section news-container">
+      <section class="news-column">
+        <h2>Top Coverage</h2>
+        <div class="news-grid" id="newsGrid"></div>
+      </section>
+
+      <aside class="sidebar">
+        <div class="sidebar-box">
+          <h3>Latest Headlines</h3>
+          <div id="latestHeadlines" class="headline-list"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
