@@ -1,5 +1,7 @@
 var API_KEY = "a7a883b730d372fabc02bdc5952b7b0c";
 var BASE_URL = "https://gnews.io/api/v4";
+var FAVORITES_KEY = "corebrief-favorites";
+var THEME_KEY = "corebrief-theme";
 
 var sampleNews = [
   {
@@ -52,29 +54,63 @@ var sampleNews = [
   }
 ];
 
+var appState = {
+  news: [],
+  category: "general",
+  searchText: "",
+  sortType: "latest",
+  searchTimer: null
+};
+
 var heroTitle = document.getElementById("heroTitle");
 var heroDescription = document.getElementById("heroDescription");
 var heroButton = document.getElementById("heroButton");
 var trendingNews = document.getElementById("trendingNews");
 var newsGrid = document.getElementById("newsGrid");
 var latestHeadlines = document.getElementById("latestHeadlines");
+var favoritesGrid = document.getElementById("favoritesGrid");
+var favoritesMessage = document.getElementById("favoritesMessage");
 var statusMessage = document.getElementById("statusMessage");
 var searchForm = document.getElementById("searchForm");
 var searchInput = document.getElementById("searchInput");
 var categoryNav = document.getElementById("categoryNav");
+var sortSelect = document.getElementById("sortSelect");
+var modeToggle = document.getElementById("modeToggle");
 
-function showMessage(text, isError) {
-  statusMessage.textContent = text;
+function setStatus(text, type, showLoading) {
+  var spinner = "";
 
-  if (isError) {
-    statusMessage.style.color = "#c0392b";
-  } else {
-    statusMessage.style.color = "#666";
+  if (showLoading) {
+    spinner = '<span class="loading-spinner"></span>';
   }
+
+  statusMessage.innerHTML = spinner + "<span>" + text + "</span>";
+  statusMessage.className = "status-message";
+
+  if (type === "error") {
+    statusMessage.classList.add("status-error");
+  }
+
+  if (type === "success") {
+    statusMessage.classList.add("status-success");
+  }
+}
+
+function showLoading(text) {
+  setStatus(text, "loading", true);
+}
+
+function showError(text) {
+  setStatus(text, "error", false);
+}
+
+function showSuccess(text) {
+  setStatus(text, "success", false);
 }
 
 function formatDate(dateText) {
   var date = new Date(dateText);
+
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
@@ -82,207 +118,444 @@ function formatDate(dateText) {
   });
 }
 
-function getImage(news) {
-  if (news.image) {
-    return news.image;
+function debounce(callback, delay) {
+  return function () {
+    clearTimeout(appState.searchTimer);
+
+    appState.searchTimer = setTimeout(function () {
+      callback();
+    }, delay);
+  };
+}
+
+function getImage(article) {
+  if (article.image) {
+    return article.image;
   }
 
   return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
 }
 
-function setHero(news) {
-  if (!news) {
+function getSourceName(article) {
+  if (article.source && article.source.name) {
+    return article.source.name;
+  }
+
+  return "Unknown Source";
+}
+
+function getFavorites() {
+  var stored = localStorage.getItem(FAVORITES_KEY);
+
+  if (!stored) {
+    return [];
+  }
+
+  return JSON.parse(stored);
+}
+
+function saveFavorites(list) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+}
+
+function isFavorite(url) {
+  var favorites = getFavorites();
+
+  return favorites.some(function (item) {
+    return item.url === url;
+  });
+}
+
+function addToFavorites(article) {
+  var favorites = getFavorites();
+  var alreadySaved = favorites.some(function (item) {
+    return item.url === article.url;
+  });
+
+  if (!alreadySaved) {
+    favorites.push(article);
+    saveFavorites(favorites);
+  }
+}
+
+function removeFromFavorites(url) {
+  var favorites = getFavorites();
+  var updatedFavorites = favorites.filter(function (item) {
+    return item.url !== url;
+  });
+
+  saveFavorites(updatedFavorites);
+}
+
+function applyTheme(theme) {
+  if (theme === "dark") {
+    document.body.classList.add("dark-mode");
+    modeToggle.textContent = "Light Mode";
+  } else {
+    document.body.classList.remove("dark-mode");
+    modeToggle.textContent = "Dark Mode";
+  }
+}
+
+function loadTheme() {
+  var savedTheme = localStorage.getItem(THEME_KEY);
+
+  if (savedTheme) {
+    applyTheme(savedTheme);
+  } else {
+    applyTheme("light");
+  }
+}
+
+function toggleTheme() {
+  var newTheme = "light";
+
+  if (!document.body.classList.contains("dark-mode")) {
+    newTheme = "dark";
+  }
+
+  localStorage.setItem(THEME_KEY, newTheme);
+  applyTheme(newTheme);
+}
+
+function updateHero(article) {
+  if (!article) {
     heroTitle.textContent = "Stay updated with the latest headlines.";
     heroDescription.textContent = "CoreBrief highlights the top stories in one simple place.";
     heroButton.href = "#";
     return;
   }
 
-  heroTitle.textContent = news.title || "Top Story";
-  heroDescription.textContent = news.description || "Read the latest update on CoreBrief.";
-  heroButton.href = news.url || "#";
+  heroTitle.textContent = article.title || "Top Story";
+  heroDescription.textContent = article.description || "Read the latest update on CoreBrief.";
+  heroButton.href = article.url || "#";
 }
 
-function makeCard(news) {
-  var card = document.createElement("article");
-  card.className = "news-card";
-
-  var image = document.createElement("img");
-  image.src = getImage(news);
-  image.alt = news.title || "News image";
-
-  var content = document.createElement("div");
-  content.className = "card-content";
-
-  var meta = document.createElement("p");
-  meta.className = "card-meta";
-  meta.textContent = (news.source && news.source.name ? news.source.name : "Unknown Source") + " • " + formatDate(news.publishedAt);
-
-  var title = document.createElement("h3");
-  title.className = "card-title";
-  title.textContent = news.title || "Latest News";
-
-  var description = document.createElement("p");
-  description.className = "card-description";
-  description.textContent = news.description || "No description available.";
-
-  var button = document.createElement("a");
-  button.className = "news-link";
-  button.textContent = "Read More";
-  button.href = news.url || "#";
-  button.target = "_blank";
-  button.rel = "noopener noreferrer";
-
-  content.appendChild(meta);
-  content.appendChild(title);
-  content.appendChild(description);
-  content.appendChild(button);
-
-  card.appendChild(image);
-  card.appendChild(content);
-
-  return card;
-}
-
-function showTrending(news) {
-  var i;
-  trendingNews.innerHTML = "";
-
-  for (i = 0; i < 3 && i < news.length; i++) {
-    trendingNews.appendChild(makeCard(news[i]));
+function getSaveButtonHtml(article, isFavoritesArea) {
+  if (isFavoritesArea) {
+    return '<button class="remove-btn" data-remove="' + article.url + '">Remove</button>';
   }
-}
 
-function showCards(news) {
-  var i;
-  newsGrid.innerHTML = "";
-
-  for (i = 0; i < news.length; i++) {
-    newsGrid.appendChild(makeCard(news[i]));
+  if (isFavorite(article.url)) {
+    return '<button class="save-btn saved-btn" type="button" disabled>Saved</button>';
   }
+
+  return '<button class="save-btn" data-save="' + article.url + '">Save</button>';
 }
 
-function showHeadlines(news) {
-  var i;
-  latestHeadlines.innerHTML = "";
+function createCardHtml(article, isFavoritesArea) {
+  var image = getImage(article);
+  var source = getSourceName(article);
+  var date = formatDate(article.publishedAt);
+  var title = article.title || "Latest News";
+  var description = article.description || "No description available.";
+  var link = article.url || "#";
+  var actionButton = getSaveButtonHtml(article, isFavoritesArea);
 
-  for (i = 0; i < 6 && i < news.length; i++) {
-    var item = document.createElement("div");
-    item.className = "headline-item";
+  return '<article class="news-card">' +
+    '<img src="' + image + '" alt="' + title + '">' +
+    '<div class="card-content">' +
+    '<p class="card-meta">' + source + " • " + date + "</p>" +
+    '<h3 class="card-title">' + title + "</h3>" +
+    '<p class="card-description">' + description + "</p>" +
+    '<div class="card-actions">' +
+    '<a class="news-link" href="' + link + '" target="_blank" rel="noopener noreferrer">Read More</a>' +
+    actionButton +
+    "</div>" +
+    "</div>" +
+    "</article>";
+}
 
-    var title = document.createElement("h4");
-    title.textContent = news[i].title || "Latest headline";
+function createHeadlineHtml(article) {
+  var title = article.title || "Latest headline";
+  var source = getSourceName(article);
 
-    var source = document.createElement("p");
-    if (news[i].source && news[i].source.name) {
-      source.textContent = news[i].source.name;
-    } else {
-      source.textContent = "Unknown Source";
+  return '<div class="headline-item">' +
+    "<h4>" + title + "</h4>" +
+    "<p>" + source + "</p>" +
+    "</div>";
+}
+
+function filterNews(newsList) {
+  if (appState.searchText === "") {
+    return newsList;
+  }
+
+  return newsList.filter(function (article) {
+    var title = article.title || "";
+    var description = article.description || "";
+    var fullText = title + " " + description;
+
+    return fullText.toLowerCase().includes(appState.searchText.toLowerCase());
+  });
+}
+
+function sortNews(newsList) {
+  var sortedList = newsList.slice();
+
+  sortedList.sort(function (a, b) {
+    if (appState.sortType === "oldest") {
+      return new Date(a.publishedAt) - new Date(b.publishedAt);
     }
 
-    item.appendChild(title);
-    item.appendChild(source);
-    latestHeadlines.appendChild(item);
-  }
+    if (appState.sortType === "title") {
+      var titleA = a.title || "";
+      var titleB = b.title || "";
+      return titleA.localeCompare(titleB);
+    }
 
-  if (news.length === 0) {
+    return new Date(b.publishedAt) - new Date(a.publishedAt);
+  });
+
+  return sortedList;
+}
+
+function getVisibleNews() {
+  var filteredList = filterNews(appState.news);
+  var sortedList = sortNews(filteredList);
+
+  return sortedList;
+}
+
+function renderTrending(newsList) {
+  var trendingList = newsList.slice(0, 3);
+  var cardsHtml = trendingList.map(function (article) {
+    return createCardHtml(article, false);
+  });
+
+  trendingNews.innerHTML = cardsHtml.join("");
+}
+
+function renderMainNews(newsList) {
+  var cardsHtml = newsList.map(function (article) {
+    return createCardHtml(article, false);
+  });
+
+  newsGrid.innerHTML = cardsHtml.join("");
+}
+
+function renderHeadlines(newsList) {
+  var headlineList = newsList.slice(0, 6);
+  var headlinesHtml = headlineList.map(function (article) {
+    return createHeadlineHtml(article);
+  });
+
+  if (headlinesHtml.length === 0) {
     latestHeadlines.innerHTML = '<p class="empty-message">No headlines available.</p>';
+  } else {
+    latestHeadlines.innerHTML = headlinesHtml.join("");
   }
 }
 
-function showNews(news) {
-  if (!news || news.length === 0) {
-    news = sampleNews;
+function renderFavorites() {
+  var favorites = getFavorites();
+  var favoritesHtml = favorites.map(function (article) {
+    return createCardHtml(article, true);
+  });
+
+  favoritesGrid.innerHTML = favoritesHtml.join("");
+
+  if (favorites.length === 0) {
+    favoritesMessage.style.display = "block";
+  } else {
+    favoritesMessage.style.display = "none";
+  }
+}
+
+function renderAllNews() {
+  var visibleNews = getVisibleNews();
+
+  if (visibleNews.length === 0) {
+    showError("No matching articles found. Showing the available news instead.");
+    visibleNews = sortNews(appState.news);
   }
 
-  setHero(news[0]);
-  showTrending(news);
-  showCards(news);
-  showHeadlines(news);
+  updateHero(visibleNews[0]);
+  renderTrending(visibleNews);
+  renderMainNews(visibleNews);
+  renderHeadlines(visibleNews);
+  renderFavorites();
 }
 
-function useSampleNews(text) {
-  showNews(sampleNews);
-  showMessage(text, true);
+function setNews(newsList) {
+  if (newsList && newsList.length > 0) {
+    appState.news = newsList;
+  } else {
+    appState.news = sampleNews;
+  }
+
+  renderAllNews();
 }
 
-function getTopNews(category) {
+function buildTopNewsUrl(category) {
   var url = BASE_URL + "/top-headlines?country=in&lang=en&max=10&apikey=" + API_KEY;
 
   if (category && category !== "general") {
     url = url + "&category=" + category;
   }
 
-  getNews(url, "Loading news...");
+  return url;
 }
 
-function searchNews(word) {
-  var url = BASE_URL + "/search?q=" + encodeURIComponent(word) + "&lang=en&country=in&max=10&apikey=" + API_KEY;
-  getNews(url, "Searching news...");
+function buildSearchUrl(word) {
+  return BASE_URL + "/search?q=" + encodeURIComponent(word) + "&lang=en&country=in&max=10&apikey=" + API_KEY;
 }
 
-function getNews(url, loadingText) {
-  showMessage(loadingText, false);
-
-  if (API_KEY === "YOUR_API_KEY") {
-    useSampleNews("API key missing. Showing sample news.");
-    return;
-  }
+function loadNewsFromApi(url, loadingText) {
+  showLoading(loadingText);
 
   fetch(url)
     .then(function (response) {
+      if (!response.ok) {
+        throw new Error("Failed");
+      }
+
       return response.json();
     })
     .then(function (data) {
       if (data.articles && data.articles.length > 0) {
-        showNews(data.articles);
-        showMessage("News loaded successfully.", false);
+        setNews(data.articles);
+        showSuccess("News loaded successfully.");
       } else {
-        useSampleNews("No news found. Showing sample news.");
+        setNews(sampleNews);
+        showError("No results found right now. Showing sample news.");
       }
     })
     .catch(function () {
-      useSampleNews("Error loading news. Showing sample news.");
+      setNews(sampleNews);
+      showError("Something went wrong while loading news. Showing sample news.");
     });
 }
 
-function setActiveButton(category) {
-  var buttons = categoryNav.querySelectorAll(".category-btn");
-  var i;
+function loadCategoryNews(category) {
+  var url = buildTopNewsUrl(category);
 
-  for (i = 0; i < buttons.length; i++) {
-    buttons[i].classList.remove("active");
+  appState.category = category;
+  appState.searchText = "";
+  searchInput.value = "";
 
-    if (buttons[i].getAttribute("data-category") === category) {
-      buttons[i].classList.add("active");
+  loadNewsFromApi(url, "Loading news...");
+}
+
+function loadSearchNews(word) {
+  var url = buildSearchUrl(word);
+
+  appState.searchText = word;
+  appState.category = "";
+
+  loadNewsFromApi(url, "Searching news...");
+}
+
+function setActiveCategory(category) {
+  var buttons = Array.from(categoryNav.querySelectorAll(".category-btn"));
+
+  buttons.forEach(function (button) {
+    var buttonCategory = button.getAttribute("data-category");
+
+    if (buttonCategory === category) {
+      button.classList.add("active");
+    } else {
+      button.classList.remove("active");
     }
+  });
+}
+
+function findArticle(url, list) {
+  return list.find(function (article) {
+    return article.url === url;
+  });
+}
+
+function saveArticle(url) {
+  var article = findArticle(url, appState.news);
+
+  if (article) {
+    addToFavorites(article);
+    renderAllNews();
   }
 }
 
-searchForm.addEventListener("submit", function (event) {
+function removeArticle(url) {
+  removeFromFavorites(url);
+  renderAllNews();
+}
+
+function handleSubmitSearch(event) {
   var word;
 
   event.preventDefault();
   word = searchInput.value.trim();
 
   if (word === "") {
-    setActiveButton("general");
-    getTopNews("general");
-  } else {
-    searchNews(word);
+    setActiveCategory(appState.category);
+    loadCategoryNews(appState.category || "general");
+    return;
   }
-});
 
-categoryNav.addEventListener("click", function (event) {
-  var button = event.target;
+  setActiveCategory("");
+  loadSearchNews(word);
+}
+
+function runDebouncedSearch() {
+  var word = searchInput.value.trim();
+
+  if (word === "") {
+    return;
+  }
+
+  setActiveCategory("");
+  loadSearchNews(word);
+}
+
+var handleTypingSearch = debounce(runDebouncedSearch, 500);
+
+function handleCategoryClick(event) {
+  var button = event.target.closest(".category-btn");
   var category;
 
-  if (button.classList.contains("category-btn")) {
-    category = button.getAttribute("data-category");
-    setActiveButton(category);
-    getTopNews(category);
+  if (!button) {
+    return;
   }
-});
 
-showNews(sampleNews);
-getTopNews("general");
+  category = button.getAttribute("data-category");
+  setActiveCategory(category);
+  loadCategoryNews(category);
+}
+
+function handleSortChange() {
+  appState.sortType = sortSelect.value;
+  renderAllNews();
+}
+
+function handlePageClick(event) {
+  var saveButton = event.target.closest("[data-save]");
+  var removeButton = event.target.closest("[data-remove]");
+
+  if (saveButton) {
+    saveArticle(saveButton.getAttribute("data-save"));
+  }
+
+  if (removeButton) {
+    removeArticle(removeButton.getAttribute("data-remove"));
+  }
+}
+
+function addEventListeners() {
+  searchForm.addEventListener("submit", handleSubmitSearch);
+  searchInput.addEventListener("input", handleTypingSearch);
+  categoryNav.addEventListener("click", handleCategoryClick);
+  sortSelect.addEventListener("change", handleSortChange);
+  modeToggle.addEventListener("click", toggleTheme);
+  document.addEventListener("click", handlePageClick);
+}
+
+function startApp() {
+  loadTheme();
+  renderFavorites();
+  setNews(sampleNews);
+  setActiveCategory("general");
+  addEventListeners();
+  loadCategoryNews("general");
+}
+
+startApp();

@@ -1,41 +1,83 @@
-# CoreBrief.
-A web app that delivers essential news in a short and concise format using NewsAPI.
+# CoreBrief
 
-## Project Description
-CoreBrief is a web application that delivers essential news in a short and concise format. It allows users to quickly browse the latest headlines without reading lengthy articles.
+CoreBrief is a simple news web application built using HTML, CSS, and JavaScript. It shows the latest news using the GNews API in a clean and easy-to-read format.
 
-## Purpose
-The goal of this project is to build a clean and user-friendly news platform that demonstrates JavaScript, API integration, and UI design skills.
+The idea behind this project is to make a basic and user-friendly platform where users can quickly browse news without too much clutter.
 
-## API Used
-* NewsAPI – for top headlines and categories
-* GNews API – for additional news sources and backup data
+---
 
 ## Features
-* Search news by keyword
-* Filter news by category (business, sports, technology, etc.)
-* Sort news by latest
-* Save favorite articles
-* Dark mode / Light mode toggle
 
-## Technologies Used
+* Search news using keywords
+* Filter news by category (Business, Technology, Sports, etc.)
+* Sort news by:
+
+  * Latest
+  * Oldest
+  * Title (A–Z)
+* Save articles to favorites
+* Remove saved articles
+* Dark mode / Light mode toggle
+* Debounced search (to reduce unnecessary API calls)
+* Loading indicator while fetching news
+* Sample news shown if API doesn’t work
+
+---
+
+## Tech Stack
+
 * HTML
 * CSS
 * JavaScript
+* GNews API
 
-## Setup Instructions
-1. Clone the repository
-2. Add your NewsAPI key
-3. Open index.html in browser
+---
 
-## Milestone Plan
-* Milestone 1: Project setup and planning
-* Milestone 2: API integration
-* Milestone 3: Features implementation
-* Milestone 4: Final deployment
+## How to Run
 
-## Future Enhancements
-* Pagination
-* Infinite scroll
-* Debouncing search
-* Loading indicators
+1. Download or clone the project
+2. Open `script.js` and add your API key
+3. Open `index.html` in your browser
+
+---
+
+## Screenshots
+
+![Home](screenshot1.png)
+![Dark Mode](screenshot2.png)
+![Favorites](screenshot3.png)
+
+---
+
+## Folder Structure
+
+```text
+CoreBrief/
+├── index.html
+├── style.css
+├── script.js
+└── README.md
+```
+
+---
+
+## What I Learned
+
+* How to fetch data from an API using JavaScript
+* How to use map(), filter(), and sort()
+* How to store data using localStorage
+* Handling user input and events
+* Making a responsive UI
+
+---
+
+## Future Improvements
+
+* Add pagination
+* Improve UI design
+* Add more filters
+* Add detailed news page
+
+---
+
+This project helped me understand how real web applications work using basic JavaScript.

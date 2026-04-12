@@ -14,10 +14,13 @@
     <div class="navbar-wrap container">
       <div class="navbar-top">
         <a href="#" class="logo">CoreBrief</a>
-        <form class="search-form search" id="searchForm">
-          <input type="text" id="searchInput" placeholder="Search news">
-          <button type="submit">Search</button>
-        </form>
+        <div class="top-actions">
+          <form class="search-form search" id="searchForm">
+            <input type="text" id="searchInput" placeholder="Search news">
+            <button type="submit">Search</button>
+          </form>
+          <button class="mode-btn" id="modeToggle" type="button">Dark Mode</button>
+        </div>
       </div>
 
       <nav class="category-nav categories" id="categoryNav">
@@ -50,7 +53,14 @@
 
     <section class="main-section news-container">
       <section class="news-column">
-        <h2>Top Coverage</h2>
+        <div class="section-top">
+          <h2>Top Coverage</h2>
+          <select id="sortSelect" class="sort-select">
+            <option value="latest">Latest</option>
+            <option value="oldest">Oldest</option>
+            <option value="title">Title A-Z</option>
+          </select>
+        </div>
         <div class="news-grid" id="newsGrid"></div>
       </section>
 
@@ -60,6 +70,12 @@
           <div id="latestHeadlines" class="headline-list"></div>
         </div>
       </aside>
+    </section>
+
+    <section class="favorites-section">
+      <h2>Favorites</h2>
+      <div class="news-grid" id="favoritesGrid"></div>
+      <p class="empty-message" id="favoritesMessage">No favorite articles yet.</p>
     </section>
   </main>
 
